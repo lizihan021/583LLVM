@@ -29,6 +29,8 @@
 #include "llvm/Analysis/BranchProbabilityInfo.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
+#include "llvm/Analysis/LoopAccessAnalysis.h"
+
 using namespace llvm;
 
 #define DEBUG_TYPE "hello"
@@ -45,7 +47,15 @@ namespace {
       BlockFrequencyInfo *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
       DependenceInfo *DI = &getAnalysis<DependenceAnalysisWrapperPass>().getDI();
       LoopInfo *LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-
+      LoopAccessInfo* LAI = &getAnalysis<LoopAccessAnalysis>().getResult();
+      const MemoryDepChecker& MDC = LAI.getDepChecker();
+      const SmallVectorImpl< Dependence > * A = MDC.getDependences();
+      for (auto PI = A->begin(); PI != A->end(); ++ PI) {
+          PI->getDst()->print(errs(), false);
+          errs() << "    ----->";
+          PI->getSrc()->print(errs(), false);
+          errs() << "\n";
+      }
       errs() << "### Hello: \n";
 
       for (auto BB1 = L->block_begin(); BB1 != L->block_end(); ++BB1) {
@@ -78,6 +88,7 @@ namespace {
       AU.addRequired<BlockFrequencyInfoWrapperPass>();
       AU.addPreserved<LoopInfoWrapperPass>();
       AU.addRequired<DependenceAnalysisWrapperPass>();
+      AU.getResult<LoopAccessAnalysis>();
       getLoopAnalysisUsage(AU);
     }
   };
