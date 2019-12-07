@@ -94,15 +94,15 @@ namespace {
       auto SyncRegion = TmpB.CreateCall(
         Intrinsic::getDeclaration(module, Intrinsic::syncregion_start), {});
 
-      IRBuilder<> Builder(detachBlock->getTerminator());
       // Create the detach.
+      IRBuilder<> Builder(detachBlock->getTerminator());
       DetachInst *DetachI = Builder.CreateDetach(threadBlock, newExitingBlock, dyn_cast<Instruction>(SyncRegion));
       detachBlock->getTerminator()->eraseFromParent();
       // Create the reattach.
       Builder.SetInsertPoint(threadBlock->getTerminator());
       ReattachInst *ReattachI = Builder.CreateReattach(newExitingBlock, SyncRegion);
       threadBlock->getTerminator()->eraseFromParent();
-
+      // Create the sync.
       Builder.SetInsertPoint(exitBlock->getTerminator());
       SyncInst *SyncI = Builder.CreateSync(newExitBlock, SyncRegion);
       exitBlock->getTerminator()->eraseFromParent();
