@@ -129,6 +129,17 @@ namespace {
       // ifInst->setSuccessor(0, freqBlock);
 
 
+      // BasicBlock* dummy_block = SplitBlock(if_end_split, &(*if_end_split->getTerminator()), DT, LI);
+      // std::swap(dummy_block, if_end_split);
+
+      // BranchInst* ifEndBr = dyn_cast<BranchInst>(if_end->getTerminator());
+      // ifEndBr->setSuccessor(0, if_end_split);
+
+      // for (auto II = infreqBlock->begin(), IE = (--infreqBlock->end()); II != IE; ++II) {
+      //   Instruction* II_clone = (*II).clone();
+      //   II_clone->insertBefore(dummy_block->getTerminator());
+      //   II_clone->print(errs());
+      // }
 
 
 
@@ -158,7 +169,7 @@ namespace {
 
 
 
-      errs() << "### log end ###\n";
+      errs() << "### log end\n";
 
       return true;
 
