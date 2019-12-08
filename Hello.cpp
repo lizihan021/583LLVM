@@ -126,7 +126,7 @@ namespace {
       BranchInst* infreqBr = dyn_cast<BranchInst>(pfor_body->getTerminator());
       infreqBr->setSuccessor(0, if_end_split);
 
-      ifInst->setSuccessor(0, freqBlock);
+      // ifInst->setSuccessor(0, freqBlock);
 
 
 
