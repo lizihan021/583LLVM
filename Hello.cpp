@@ -15,6 +15,7 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 // #include "llvm/IR/LLVMContext.h"
@@ -36,6 +37,7 @@
 #include "llvm/Analysis/BranchProbabilityInfo.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
+#include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
 using namespace llvm;
 
@@ -60,11 +62,18 @@ namespace {
       DominatorTree *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
       // MemorySSA *MSSA = &getAnalysis<MemorySSAWrapperPass>().getMSSA();
       // std::unique_ptr<MemorySSAUpdater> MSSAU = make_unique<MemorySSAUpdater>(MSSA);
-
+      // if (L->getParent()->getName() != "main")
+      //   return false;
       auto exitBlock = L->getUniqueExitBlock();
       if (exitBlock == nullptr) {
         return false;
       }
+      // errs() << exitBlock->getParent()->getName() << "\n";
+      // if (exitBlock->getParent()->getName() != "main") {
+      //   return false;
+      // };
+      // errs() << exitBlock->getParent()->getName() << "\n";
+
 
       auto exitingBlock = *pred_begin(exitBlock);
       errs() << "jfdkslajdlksajflkdsa\n";
@@ -88,7 +97,7 @@ namespace {
         return false;
       }
       auto newExitBlock = SplitBlock(exitBlock, &(*exitBlock->begin()), DT, LI);
-      
+
       auto preHeader = L->getLoopPreheader();
       IRBuilder<> TmpB(preHeader, preHeader->begin());
       auto SyncRegion = TmpB.CreateCall(
@@ -106,6 +115,18 @@ namespace {
       Builder.SetInsertPoint(exitBlock->getTerminator());
       SyncInst *SyncI = Builder.CreateSync(newExitBlock, SyncRegion);
       exitBlock->getTerminator()->eraseFromParent();
+
+      // Sync infrequent pass
+      BasicBlock* header = preHeader->getSingleSuccessor();
+      BranchInst* headerBR = dyn_cast<BranchInst>(header->getTerminator());
+      headerBR->print(errs());
+      BasicBlock* IFPBB = headerBR->getSuccessor(0) == detachBlock ?
+        headerBR->getSuccessor(1) : headerBR->getSuccessor(0);
+      BasicBlock* IFPBBOld =  SplitBlock(IFPBB, &*IFPBB->begin(), DT, LI);
+
+      Builder.SetInsertPoint(IFPBB->getTerminator());
+      SyncInst *SyncIFP = Builder.CreateSync(IFPBBOld, SyncRegion);
+      IFPBB->getTerminator()->eraseFromParent();
 
       errs() << "### end\n";
       return true;
@@ -127,4 +148,3 @@ namespace {
 
 char Hello::ID = 0;
 static RegisterPass<Hello> X("hello", "Hello World Pass");
-
