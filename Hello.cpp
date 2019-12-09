@@ -95,38 +95,39 @@ namespace {
       }
 
       pfor_body_clone->getTerminator()->eraseFromParent();
+
       BranchInst* ifInstClone = dyn_cast<BranchInst>(pfor_body_clone->getTerminator());
       ICmpInst* ifConditionClone = dyn_cast<ICmpInst>(pfor_body_clone->begin());
       ifInstClone->setSuccessor(0, infreqBlock);
       ifInstClone->setSuccessor(1, pfor_inc);
       ifInstClone->setCondition(ifConditionClone);
 
-      BasicBlock* if_end_split = SplitBlock(if_end, &(*if_end->getTerminator()), DT, LI);
+      // BasicBlock* if_end_split = SplitBlock(if_end, &(*if_end->getTerminator()), DT, LI);
 
       // Todo, check which one is the frequent block.
-      PHINode* phi_node = dyn_cast<PHINode>(if_end->begin());
-      phi_node->print(errs());
-      BasicBlock* incommingBlock = phi_node->getIncomingBlock(0);
-      Value* frequentValue;
-      if (incommingBlock == freqBlock) {
-        frequentValue = phi_node->getIncomingValue(0);
-      } else {
-        frequentValue = phi_node->getIncomingValue(1);
-      }
+      // PHINode* phi_node = dyn_cast<PHINode>(if_end->begin());
+      // phi_node->print(errs());
+      // BasicBlock* incommingBlock = phi_node->getIncomingBlock(0);
+      // Value* frequentValue;
+      // if (incommingBlock == freqBlock) {
+      //   frequentValue = phi_node->getIncomingValue(0);
+      // } else {
+      //   frequentValue = phi_node->getIncomingValue(1);
+      // }
 
       // TODO: detect all usage
-      StoreInst* store_inst = dyn_cast<StoreInst>(--(--if_end->end()));
-      store_inst->setOperand(0, frequentValue);
+      // StoreInst* store_inst = dyn_cast<StoreInst>(--(--if_end->end()));
+      // store_inst->setOperand(0, frequentValue);
 
-      if_end->begin()->eraseFromParent();
+      // if_end->begin()->eraseFromParent();
 
       BranchInst* ifThenBr = dyn_cast<BranchInst>(infreqBlock->getTerminator());
       ifThenBr->setSuccessor(0, pfor_inc);
 
       BranchInst* infreqBr = dyn_cast<BranchInst>(pfor_body->getTerminator());
-      infreqBr->setSuccessor(0, if_end_split);
+      infreqBr->setSuccessor(0, if_end);
 
-      // ifInst->setSuccessor(0, freqBlock);
+      ifInst->setSuccessor(0, freqBlock);
 
 
       // BasicBlock* dummy_block = SplitBlock(if_end_split, &(*if_end_split->getTerminator()), DT, LI);
