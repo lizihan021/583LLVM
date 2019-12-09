@@ -127,7 +127,26 @@ namespace {
       BranchInst* infreqBr = dyn_cast<BranchInst>(pfor_body->getTerminator());
       infreqBr->setSuccessor(0, if_end);
 
-      ifInst->setSuccessor(0, freqBlock);
+      // magic seal
+      // ifInst->setSuccessor(0, freqBlock);
+
+
+
+      BasicBlock* newSyncBlock = SplitBlock(infreqBlock, &(*infreqBlock->begin()), DT, LI);
+      std::swap(newSyncBlock, infreqBlock);
+
+      auto exitBlock = L->getUniqueExitBlock();
+
+      Instruction* II_clone = (*exitBlock->begin()).clone();
+      II_clone->insertBefore(newSyncBlock->getTerminator());
+
+      SyncInst* syncI = dyn_cast<SyncInst>(II_clone);
+      syncI->setSuccessor(0, infreqBlock);
+
+      newSyncBlock->getTerminator()->eraseFromParent();
+
+
+
 
 
       // BasicBlock* dummy_block = SplitBlock(if_end_split, &(*if_end_split->getTerminator()), DT, LI);
