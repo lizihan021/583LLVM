@@ -53,13 +53,13 @@ namespace {
   // Hello - The first implementation, without getAnalysisUsage.
   bool checkDepAndSetInFB(BranchInst* ifInst, BranchProbabilityInfo *BPI, DependenceInfo *DI, BasicBlock*& infreqBlock, BasicBlock*& freqBlock){
       if (ifInst == nullptr) return false;
-      
+
       freqBlock = ifInst->getSuccessor(1);
       infreqBlock = ifInst->getSuccessor(0);
-      
-      // BranchProbability bp = 
+
+      // BranchProbability bp =
       //   BPI->getEdgeProbability(ifInst->getParent(), infreqBlock);
-      
+
       // if (bp.getNumerator() >= .8 * bp.getDenominator()) {
       //   std::swap(freqBlock, infreqBlock);
       // }
@@ -70,7 +70,7 @@ namespace {
           Instruction &Src = * infII;
           Dependence *dep = DI->depends(&Src, &Dst, false).get();
           if (dep != NULL) {
-            errs() << "Dep. detected, apply our pass\n"; 
+            errs() << "Dep. detected, apply our pass\n";
             // if (dep->isConfused()) errs() << "[C] ";
             dep->getDst()->print(errs());
             errs() << "\n";
@@ -87,7 +87,7 @@ namespace {
   struct Hello : public LoopPass {
     static char ID; // Pass identification, replacement for typeid
     Hello() : LoopPass(ID) {}
-    
+
 
     bool runOnLoop(Loop *L, LPPassManager &LPM) override {
       BranchProbabilityInfo *BPI = &getAnalysis<BranchProbabilityInfoWrapperPass>().getBPI();
@@ -109,7 +109,7 @@ namespace {
       BasicBlock* pfor_inc = detachInst->getContinue();
 
       BranchInst* ifInst = dyn_cast<BranchInst>(pfor_body->getTerminator());
-      
+
       BasicBlock* infreqBlock;
       BasicBlock* freqBlock;
 
@@ -121,29 +121,44 @@ namespace {
       errs() << "infre!!!" << "\n";
       errs() << "infreqBlockName " << infreqBlock->getName() << "\n";
       errs() << "freqBlockName " << freqBlock->getName() << "\n";
-      
+
       Function* F = ifInst->getFunction();
       BasicBlock* if_end = freqBlock->getUniqueSuccessor();
       ReattachInst* reattachInst = dyn_cast<ReattachInst>(if_end->getTerminator());
 
-      // ValueToValueMapTy VMap;
-      // BasicBlock *pfor_body_clone = CloneBasicBlock(pfor_body, VMap, "pfor.body.clone", F);
       BasicBlock* pfor_body_clone = SplitBlock(pfor_inc, &(*pfor_inc->begin()), DT, LI);
       std::swap(pfor_body_clone, pfor_inc);
+      errs() << "Print clone instructions: \n";
 
       for (auto II = pfor_body->begin(), IE = pfor_body->end(); II != IE; ++II) {
         Instruction* II_clone = (*II).clone();
         II_clone->insertBefore(pfor_body_clone->getTerminator());
         II_clone->print(errs());
+        errs() << "\n";
       }
-
+      errs() << "Finish clone instructions: \n";
       pfor_body_clone->getTerminator()->eraseFromParent();
 
       BranchInst* ifInstClone = dyn_cast<BranchInst>(pfor_body_clone->getTerminator());
-      ICmpInst* ifConditionClone = dyn_cast<ICmpInst>(pfor_body_clone->begin());
+      ICmpInst* ifConditionClone = dyn_cast<ICmpInst>( --( --(pfor_body_clone->end())) );
       ifInstClone->setSuccessor(0, infreqBlock);
       ifInstClone->setSuccessor(1, pfor_inc);
       ifInstClone->setCondition(ifConditionClone);
+      ifInstClone->print(errs());
+      errs() << "\n";
+
+      ValueToValueMapTy VMap;
+      BasicBlock *pfor_body_temp = CloneBasicBlock(pfor_body, VMap, ".clone", F);
+      SmallVector<BasicBlock *, 1> blockList = {pfor_body_temp};
+      remapInstructionsInBlocks(blockList, VMap);
+      errs() << "Print clone instructions: \n";
+      for (auto II = pfor_body_temp->begin(), IE = pfor_body_temp->end(); II != IE; ++II) {
+        II->print(errs());
+        errs() << "\n";
+      }
+      errs() << "Finish clone instructions: \n";
+
+      
 
       // BasicBlock* if_end_split = SplitBlock(if_end, &(*if_end->getTerminator()), DT, LI);
 
