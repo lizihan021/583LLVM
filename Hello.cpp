@@ -51,9 +51,43 @@ using namespace llvm;
 
 namespace {
   // Hello - The first implementation, without getAnalysisUsage.
+  bool checkDepAndSetInFB(BranchInst* ifInst, BranchProbabilityInfo *BPI, DependenceInfo *DI, BasicBlock*& infreqBlock, BasicBlock*& freqBlock){
+      if (ifInst == nullptr) return false;
+      
+      freqBlock = ifInst->getSuccessor(1);
+      infreqBlock = ifInst->getSuccessor(0);
+      
+      // BranchProbability bp = 
+      //   BPI->getEdgeProbability(ifInst->getParent(), infreqBlock);
+      
+      // if (bp.getNumerator() >= .8 * bp.getDenominator()) {
+      //   std::swap(freqBlock, infreqBlock);
+      // }
+
+      for (auto II = freqBlock->begin(); II != freqBlock->end(); ++ II) {
+        Instruction &Dst = *II;
+        for (auto infII = infreqBlock->begin(); infII != infreqBlock->end(); ++ infII) {
+          Instruction &Src = * infII;
+          Dependence *dep = DI->depends(&Src, &Dst, false).get();
+          if (dep != NULL) {
+            errs() << "Dep. detected, apply our pass\n"; 
+            // if (dep->isConfused()) errs() << "[C] ";
+            dep->getDst()->print(errs());
+            errs() << "\n";
+            // errs() << "   ---> ";
+            dep->getSrc()->print(errs(), false);
+            errs() << "\n";
+            return true;
+          }
+        }
+      }
+      return false;
+  }
+
   struct Hello : public LoopPass {
     static char ID; // Pass identification, replacement for typeid
     Hello() : LoopPass(ID) {}
+    
 
     bool runOnLoop(Loop *L, LPPassManager &LPM) override {
       BranchProbabilityInfo *BPI = &getAnalysis<BranchProbabilityInfoWrapperPass>().getBPI();
@@ -70,16 +104,25 @@ namespace {
       BasicBlock* preHeader = L->getLoopPreheader();
       BasicBlock* pfor_detach = preHeader->getUniqueSuccessor();
       DetachInst* detachInst = dyn_cast<DetachInst>(pfor_detach->getTerminator());
+      if (detachInst == nullptr) return false;
       BasicBlock* pfor_body = detachInst->getDetached();
       BasicBlock* pfor_inc = detachInst->getContinue();
 
       BranchInst* ifInst = dyn_cast<BranchInst>(pfor_body->getTerminator());
-      Function* F = ifInst->getFunction();
-      BasicBlock* infreqBlock = ifInst->getSuccessor(0);
-      errs() << "infreqBlockName " << infreqBlock->getName() << "\n";
-      BasicBlock* freqBlock = ifInst->getSuccessor(1);
-      errs() << "freqBlockName " << freqBlock->getName() << "\n";
+      
+      BasicBlock* infreqBlock;
+      BasicBlock* freqBlock;
 
+      if (!checkDepAndSetInFB(ifInst, BPI, DI, infreqBlock, freqBlock)) {
+        errs() << "infre" << "\n";
+        return false;
+
+      }
+      errs() << "infre!!!" << "\n";
+      errs() << "infreqBlockName " << infreqBlock->getName() << "\n";
+      errs() << "freqBlockName " << freqBlock->getName() << "\n";
+      
+      Function* F = ifInst->getFunction();
       BasicBlock* if_end = freqBlock->getUniqueSuccessor();
       ReattachInst* reattachInst = dyn_cast<ReattachInst>(if_end->getTerminator());
 
